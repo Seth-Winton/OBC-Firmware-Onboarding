@@ -27,24 +27,18 @@ error_code_t lm75bdInit(lm75bd_config_t *config) {
 }
 
 error_code_t readTempLM75BD(uint8_t devAddr, float *temp) {
+  if (temp == NULL) {return ERR_CODE_INVALID_ARG;}
   error_code_t errCode;
+
   uint8_t tempReg = LM75BD_REG_TEMP;
-  errCode = i2cSendTo(devAddr, &tempReg, 1); /* Select temperature register*/
-  if (errCode != ERR_CODE_SUCCESS) return errCode;
+  RETURN_IF_ERROR_CODE(i2cSendTo(devAddr, &tempReg, sizeof(tempReg))); /* Select temperature register*/
 
   uint8_t buff[2] = {0};
-  errCode = i2cReceiveFrom(devAddr, buff, 2); /* Read temp data */
-  if (errCode != ERR_CODE_SUCCESS) return errCode;
+  RETURN_IF_ERROR_CODE(i2cReceiveFrom(devAddr, buff, sizeof(buff))); /* Read temp data */
   
-  uint16_t val = ((buff[0] << 3) + (buff[1] >> 5)); /* Combine MSB and LSB */
-  if (val >> 10) {
-    /* Negative */
-    *temp = ((~val + 1) & 0x7FF) * -0.125;
-  }
-  else {
-    /* Positive */
-    *temp = val * 0.125;
-  }
+  // TODO make this cleaner
+  int16_t val = (buff[0] << 8) | buff[1]; /* Combine MSB and LSB */
+  *temp = (float)(val >> 5) * 0.125;
   
   return ERR_CODE_SUCCESS;
 }
@@ -84,8 +78,7 @@ error_code_t writeConfigLM75BD(uint8_t devAddr, uint8_t osFaultQueueSize, uint8_
   buff[1] |= (osOperationMode << 1);
   buff[1] |= devOperationMode;
 
-  errCode = i2cSendTo(LM75BD_OBC_I2C_ADDR, buff, CONF_WRITE_BUFF_SIZE);
-  if (errCode != ERR_CODE_SUCCESS) return errCode;
+  RETURN_IF_ERROR_CODE(i2cSendTo(LM75BD_OBC_I2C_ADDR, buff, CONF_WRITE_BUFF_SIZE));
 
   return ERR_CODE_SUCCESS;
 }
