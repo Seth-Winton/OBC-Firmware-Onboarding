@@ -2,7 +2,7 @@
 #include "errors.h"
 #include "lm75bd.h"
 #include "console.h"
-#include "logging/logging.h"
+#include "logging.h"
 
 #include <FreeRTOS.h>
 #include <os_task.h>
@@ -47,7 +47,7 @@ error_code_t thermalMgrSendEvent(thermal_mgr_event_t *event) {
   if (thermalMgrQueueHandle == NULL) {return ERR_CODE_INVALID_STATE;}
 
   // Send an event to the thermal manager queue
-  if (xQueueSend(thermalMgrQueueHandle, event, 1000) !=  pdTRUE) {
+  if (xQueueSend(thermalMgrQueueHandle, event, 0) !=  pdTRUE) {
     return ERR_CODE_QUEUE_FULL;
   }
   return ERR_CODE_SUCCESS;
@@ -57,9 +57,7 @@ void osHandlerLM75BD(void) {
   // Send event to handle OS interrupt
   thermal_mgr_event_t event;
   event.type = THERMAL_MGR_EVENT_HANDLE_OS_CMD;
-  if (xQueueSendFromISR(thermalMgrQueueHandle, &event, NULL) != pdTRUE) {
-    LOG_ERROR_CODE(ERR_CODE_QUEUE_FULL);
-  }
+  xQueueSendFromISR(thermalMgrQueueHandle, &event, NULL);
 }
 
 static void thermalMgr(void *pvParameters) {
